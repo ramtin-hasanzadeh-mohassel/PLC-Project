@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Epic Kanban Board</title>
+
+<style>
+body { margin:0; font-family:system-ui; background:#f3f4f6; }
+header { background:#111827; color:white; padding:10px 16px; display:flex; gap:10px; flex-wrap:wrap; }
+button { background:#2563eb; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+.lorem { padding:10px 16px; font-size:14px; color:#374151; }
+.board { display:grid; grid-template-columns:220px repeat(5,minmax(220px,1fr)); overflow-x:auto; margin:10px; }
+.column-header { background:#e5e7eb; padding:8px; text-align:center; font-weight:600; border-right:1px solid #d1d5db; }
+.epic { grid-column:1/-1; background:#e0e7ff; padding:10px; border-top:2px solid #6366f1; margin-bottom:6px; border-radius:6px; }
+.epic-title { display:flex; flex-direction:column; gap:4px; font-weight:700; }
+.epic-desc, .ticket-desc { font-size:12px; color:#374151; min-height:16px; outline:none; }
+.column-desc { background:#f9fafb; padding:4px 6px; font-size:11px; color:#6b7280; text-align:center; border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; }
+.epic-header { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.epic-left { display:flex; flex-direction:column; gap:4px; }
+.epic-right { flex:1; }
+[contenteditable]:empty:before { content: attr(placeholder); color:#9ca3af; }
+.progress-bar { height:6px; background:#c7d2fe; border-radius:4px; overflow:hidden; margin-top:4px; }
+.progress { height:100%; background:#4f46e5; }
+.ticket-label { background:#f9fafb; padding:6px; border-right:1px solid #e5e7eb; border-radius:4px; margin-bottom:6px; }
+.ticket-progress { height:4px; background:#e5e7eb; border-radius:4px; overflow:hidden; margin-top:4px; }
+.ticket-progress div { height:100%; background:#22c55e; }
+.cell { border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:6px; min-height:70px; }
+.card { background:white; border-left:4px solid #2563eb; padding:6px; border-radius:4px; font-size:12px; margin-bottom:6px; cursor:grab; }
+.card-title { font-weight:600; }
+.card button { float:right; background:none; border:none; color:#dc2626; cursor:pointer; }
+[contenteditable] { outline:none; }
+.total-progress-container { margin:10px auto; width:70%; }
+.total-progress-bg { position:relative; width:100%; height:20px; background:#e5e7eb; border-radius:10px; overflow:hidden; }
+.total-progress { height:100%; width:0%; background:#4f46e5; border-radius:10px 0 0 10px; transition:width .3s; }
+#totalProgressText { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:12px; font-weight:600; color:#111827; white-space:nowrap; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <button onclick="connectFolder()">📂 Select Project Folder</button>
+  <button onclick="saveJSON()">💾 Save progress</button>
+  <button onclick="addEpic()">+ Add Epic</button>
+</header>
+
+<div class="lorem">
+  <p>Project management tool based on Kanban principle and to-do list. Please select the project folder which includes a JSON file called "board.json"</p>
+</div>
+
+<div class="total-progress-container">
+  <div class="total-progress-bg">
+    <div class="total-progress" id="totalProgress"></div>
+    <span id="totalProgressText">0%</span>
+  </div>
+</div>
+
+<div class="lorem">
+  <p>Please indicate what you are doing using the cards and add new cards whenever needed.</p>
+</div>
+
+<div class="board" id="board"></div>
+
+<script>
+const ADMIN_PASSWORD = "IamSure";
+
+const columns=["Specifications","Design","Realize","Test","Document"];
+const columnDescriptions=[
+ "Performance specs and test definitions",
+ "Simulations and Schematic design",
+ "Layout Design and Order",
+ "HW tests and Certifications",
+ "Wrap up and Catalog"
+];
+
+let epics=[];
+let draggedCard=null;
+let isAdmin=false;
+let isDirty=false;
+let dirHandle=null;
+let jsonFileHandle=null;
+
+const board=document.getElementById("board");
+
+/* Dirty tracking */
+function markDirty(){ isDirty=true; updateTotalProgress(); }
+window.addEventListener("beforeunload",e=>{ if(!isDirty)return; e.preventDefault(); e.returnValue=""; });
+
+/* Admin */
+function requireAdmin(){
+ if(isAdmin)return true;
+ const pw=prompt("Admin password:");
+ if(pw===ADMIN_PASSWORD){ isAdmin=true; return true; }
+ alert("Wrong password"); return false;
+}
+
+/* File system */
+async function connectFolder(){
+ if(!window.showDirectoryPicker){ alert("Browser does not support folder access."); return; }
+ dirHandle=await window.showDirectoryPicker();
+ jsonFileHandle=await dirHandle.getFileHandle("board.json",{create:true});
+ const file=await jsonFileHandle.getFile();
+ const text=await file.text();
+ epics=text?JSON.parse(text):[];
+
+ /* ensure fields exist */
+ epics=(epics||[]).map(e=>({
+  desc:e.desc||"",
+  ...e,
+  tickets:(e.tickets||[]).map(t=>({
+   desc:t.desc||"",
+   ...t,
+   cards:(t.cards||[]).map(c=>({
+    text:c.text||"",
+    ...c
+   }))
+  }))
+ }));
+
+ isDirty=false;
+ render();
+}
+
+async function saveJSON(){
+ if(!jsonFileHandle){ alert("Connect project folder first."); return; }
+ const writable=await jsonFileHandle.createWritable();
+ await writable.write(JSON.stringify(epics,null,2));
+ await writable.close();
+ isDirty=false;
+ alert("board.json saved.");
+}
+
+/* Update helpers */
+function updateEpicDesc(id,val){
+ const e=epics.find(e=>e.id===id); if(!e)return;
+ e.desc=val.trim(); markDirty();
+}
+function updateTicketDesc(id,val){
+ const t=findTicket(id); if(!t)return;
+ t.desc=val.trim(); markDirty();
+}
+function updateCardTitle(id,val){
+ epics.forEach(e=>e.tickets.forEach(t=>t.cards.forEach(c=>{
+  if(c.id===id)c.name=val.trim();
+ })));
+ markDirty();
+}
+function updateCardText(id,val){
+ epics.forEach(e=>e.tickets.forEach(t=>t.cards.forEach(c=>{
+  if(c.id===id)c.text=val.trim();
+ })));
+ markDirty();
+}
+
+/* Render */
+function render(){
+ board.innerHTML="";
+ board.appendChild(document.createElement("div"));
+ columns.forEach(c=>{
+  const h=document.createElement("div");
+  h.className="column-header";
+  h.textContent=c;
+  board.appendChild(h);
+ });
+ board.appendChild(document.createElement("div"));
+ columnDescriptions.forEach(desc=>{
+  const d=document.createElement("div");
+  d.className="column-desc";
+  d.textContent=desc;
+  board.appendChild(d);
+ });
+
+ epics.forEach(epic=>{
+  board.appendChild(renderEpic(epic));
+  epic.tickets.forEach(ticket=>{
+   board.appendChild(renderTicket(ticket));
+   columns.forEach((_,col)=>{
+    const cell=document.createElement("div");
+    cell.className="cell";
+    cell.ondragover=e=>e.preventDefault();
+    cell.ondrop=()=>{ draggedCard.col=col; markDirty(); render(); };
+    ticket.cards.filter(c=>c.col===col)
+      .forEach(c=>cell.appendChild(renderCard(c)));
+    board.appendChild(cell);
+   });
+  });
+ });
+ updateTotalProgress();
+}
+
+function renderEpic(epic){
+ const d=document.createElement("div");
+ d.className="epic";
+ d.innerHTML=`
+  <div class="epic-header">
+    <div class="epic-left">
+      <div contenteditable class="epic-name"
+           onblur="epic.name=this.innerText;markDirty()">${epic.name}</div>
+      <button onclick="addTicket(${epic.id})">+ Ticket</button>
+    </div>
+    <div class="epic-right">
+      <div contenteditable class="epic-desc"
+           placeholder="Optional description"
+           onblur="updateEpicDesc(${epic.id}, this.innerText)">${epic.desc||''}</div>
+    </div>
+  </div>
+  <div class="progress-bar">
+    <div class="progress" style="width:${epicProgress(epic)*100}%"></div>
+  </div>`;
+ return d;
+}
+
+function renderTicket(ticket){
+ const d=document.createElement("div");
+ d.className="ticket-label";
+ d.innerHTML=`
+  <div contenteditable onblur="ticket.name=this.innerText;markDirty()">
+    <strong>${ticket.name}</strong>
+  </div>
+  <div contenteditable class="ticket-desc"
+       placeholder="Optional description"
+       onblur="updateTicketDesc(${ticket.id}, this.innerText)">${ticket.desc||''}</div>
+  <button onclick="addCard(${ticket.id})">+ Card</button>
+  <div class="ticket-progress">
+    <div style="width:${ticketProgress(ticket)*100}%"></div>
+  </div>`;
+ return d;
+}
+
+function renderCard(card){
+ const d=document.createElement("div");
+ d.className="card";
+ d.draggable=true;
+ d.ondragstart=()=>draggedCard=card;
+ d.innerHTML=`
+  <button onclick="deleteCard(${card.id})">✕</button>
+  <div contenteditable class="card-title"
+       onblur="updateCardTitle(${card.id}, this.innerText)">${card.name}</div>
+  <div contenteditable
+       onblur="updateCardText(${card.id}, this.innerText)">${card.text||''}</div>`;
+ return d;
+}
+
+/* Actions */
+function addEpic(){
+ if(!requireAdmin())return;
+ const name=prompt("Epic name:"); if(!name)return;
+ epics.push({id:Date.now(),name,desc:"",tickets:[]});
+ markDirty(); render();
+}
+function addTicket(epicId){
+ const epic=epics.find(e=>e.id===epicId);
+ const name=prompt("Ticket name:"); if(!name)return;
+ epic.tickets.push({id:Date.now(),name,desc:"",cards:[]});
+ markDirty(); render();
+}
+function addCard(ticketId){
+ const t=findTicket(ticketId);
+ const name=prompt("Card name:");
+ const text=prompt("Card text:");
+ if(!name||!text)return;
+ t.cards.push({id:Date.now(),name,text,col:0});
+ markDirty(); render();
+}
+function deleteCard(id){
+ if(!requireAdmin())return;
+ epics.forEach(e=>e.tickets.forEach(t=>t.cards=t.cards.filter(c=>c.id!==id)));
+ markDirty(); render();
+}
+
+/* Progress */
+function ticketProgress(t){ if(!t.cards.length)return 0; return (Math.max(...t.cards.map(c=>c.col))+1)/columns.length; }
+function epicProgress(e){ if(!e.tickets.length)return 0; return e.tickets.reduce((a,t)=>a+ticketProgress(t),0)/e.tickets.length; }
+
+function updateTotalProgress(){
+ const total=epics.length?epics.reduce((a,e)=>a+epicProgress(e),0)/epics.length:0;
+ const percent=Math.round(total*100);
+ document.getElementById("totalProgress").style.width=percent+"%";
+ document.getElementById("totalProgressText").textContent=percent+"%";
+}
+
+function findTicket(id){
+ return epics.flatMap(e=>e.tickets).find(t=>t.id===id);
+}
+</script>
+
+</body>
+</html>

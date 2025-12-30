@@ -1,0 +1,163 @@
+[
+  {
+    "desc": "",
+    "id": 1766925570738,
+    "name": "Decipher IEPE",
+    "tickets": [
+      {
+        "desc": "Understand and simulate all analog parts",
+        "id": 1766925575891,
+        "name": "Theory",
+        "cards": [
+          {
+            "text": "A Simple model is available in LT spice Files including Charge amplifier and Signal conditioner @Mohammad, Please review it and improve",
+            "id": 1766925722643,
+            "name": "Sasan",
+            "col": 1
+          },
+          {
+            "text": "A presentation is available",
+            "id": 1766927114226,
+            "name": "Ramtin",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "make a list of sensors in the market with theirs specs and possible prices etc.",
+        "id": 1766925586058,
+        "name": "Sensors in marker",
+        "cards": [
+          {
+            "text": "Look at Wilcoxon, Bruel& Kjaer, PCB Piezotronics. A full list of all Piezo manufacurers with TEDS is available in IEPE website via TEDS manufacturer ID",
+            "id": 1766927031746,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "",
+        "id": 1766925598906,
+        "name": "Boards in market",
+        "cards": [
+          {
+            "text": "A few examples are in the SPDS document. @Ramitin please make an overview with specs",
+            "id": 1766927243995,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "",
+        "id": 1766925606954,
+        "name": "TEDS",
+        "cards": [
+          {
+            "text": "Please try to find IEEE standard number 1451.4",
+            "id": 1766927319682,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "",
+        "id": 1766925618986,
+        "name": "Cristals in market",
+        "cards": [
+          {
+            "text": "Please try to make an overview of typical cristalls that we can use for sheer mode Accelerometer design",
+            "id": 1766927450898,
+            "name": "Sasan ",
+            "col": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "desc": "",
+    "id": 1766925797170,
+    "name": "Simple lab tool Functional Model",
+    "tickets": [
+      {
+        "desc": "",
+        "id": 1766925983786,
+        "name": "Overall Design",
+        "cards": [
+          {
+            "text": "Started with a rough design, Power is missing, Current source is missing, protection for Sensors are missing",
+            "id": 1766926274626,
+            "name": "Sasan",
+            "col": 1
+          },
+          {
+            "text": "one page for high level specifications is added to the IEPE_SPDS document",
+            "id": 1766926329242,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "",
+        "id": 1766925996706,
+        "name": "Reuse Blocks",
+        "cards": []
+      },
+      {
+        "desc": "",
+        "id": 1766926009106,
+        "name": "FUMO Full Version",
+        "cards": []
+      },
+      {
+        "desc": "",
+        "id": 1766926128466,
+        "name": "Product",
+        "cards": []
+      }
+    ]
+  },
+  {
+    "desc": "Here we still don't have an ADC, but we only have Digital interface like Bruel & Kjaer, to read TEDS, set gains, and filters.",
+    "id": 1766926371602,
+    "name": "Different Versions of Boards",
+    "tickets": [
+      {
+        "desc": "",
+        "id": 1766926389586,
+        "name": "SPI Interface",
+        "cards": [
+          {
+            "text": "We can start with ESP32 V1 Wroom as SPI master",
+            "id": 1766927516658,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      },
+      {
+        "desc": "",
+        "id": 1766926454642,
+        "name": "TEDS interface",
+        "cards": []
+      },
+      {
+        "desc": "",
+        "id": 1766926507906,
+        "name": "SW",
+        "cards": [
+          {
+            "text": "Lets start with Breul_Kjaer_10k_full_device.pdf in readings to create UI specs, Back end should be just what is necesasry for ESP32 Serial interface to Windows. We can use HTML for UI, very common in Precision mechatronics buisness",
+            "id": 1766927682282,
+            "name": "Sasan",
+            "col": 0
+          }
+        ]
+      }
+    ]
+  }
+]
