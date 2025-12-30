@@ -95,31 +95,37 @@ function requireAdmin(){
 }
 
 /* File system */
-async function connectFolder(){
- if(!window.showDirectoryPicker){ alert("Browser does not support folder access."); return; }
- dirHandle=await window.showDirectoryPicker();
- jsonFileHandle=await dirHandle.getFileHandle("board.json",{create:true});
- const file=await jsonFileHandle.getFile();
- const text=await file.text();
- epics=text?JSON.parse(text):[];
+async function connectFolder() {
+  const url = "board.json"; // JSON file must be in the same repo root as index.html
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Could not load board.json");
+    const text = await response.text();
+    epics = text ? JSON.parse(text) : [];
 
- /* ensure fields exist */
- epics=(epics||[]).map(e=>({
-  desc:e.desc||"",
-  ...e,
-  tickets:(e.tickets||[]).map(t=>({
-   desc:t.desc||"",
-   ...t,
-   cards:(t.cards||[]).map(c=>({
-    text:c.text||"",
-    ...c
-   }))
-  }))
- }));
+    // Ensure fields exist
+    epics = (epics || []).map(e => ({
+      desc: e.desc || "",
+      ...e,
+      tickets: (e.tickets || []).map(t => ({
+        desc: t.desc || "",
+        ...t,
+        cards: (t.cards || []).map(c => ({
+          text: c.text || "",
+          ...c
+        }))
+      }))
+    }));
 
- isDirty=false;
- render();
+    isDirty = false;
+    render();
+    alert("board.json loaded from repository!");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load board.json: " + err.message);
+  }
 }
+
 
 async function saveJSON(){
  if(!jsonFileHandle){ alert("Connect project folder first."); return; }
@@ -286,3 +292,4 @@ function findTicket(id){
 
 </body>
 </html>
+
