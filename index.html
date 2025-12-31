@@ -94,46 +94,65 @@ function requireAdmin(){
  alert("Wrong password"); return false;
 }
 
-/* File system */
 async function connectFolder() {
-  const url = "board.json"; // JSON file must be in the same repo root as index.html
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Could not load board.json");
-    const text = await response.text();
+    // 1. Ask user to pick a folder
+    dirHandle = await window.showDirectoryPicker();
+    
+    // 2. Get handle to board.json (create if missing)
+    if (await dirHandle.getFileHandle('board.json', { create: true })) {
+      jsonFileHandle = await dirHandle.getFileHandle('board.json', { create: true });
+    } else {
+      throw new Error("Could not access board.json");
+    }
+
+    // 3. Read file content
+    const file = await jsonFileHandle.getFile();
+    const text = await file.text();
     epics = text ? JSON.parse(text) : [];
 
-    // Ensure fields exist
+    // Normalize structure
     epics = (epics || []).map(e => ({
-      desc: e.desc || "",
       ...e,
+      desc: e.desc || "",
       tickets: (e.tickets || []).map(t => ({
-        desc: t.desc || "",
         ...t,
+        desc: t.desc || "",
         cards: (t.cards || []).map(c => ({
-          text: c.text || "",
-          ...c
+          ...c,
+          text: c.text || ""
         }))
       }))
     }));
 
     isDirty = false;
     render();
-    alert("board.json loaded from repository!");
+    alert("Project folder connected and board.json loaded!");
   } catch (err) {
-    console.error(err);
-    alert("Failed to load board.json: " + err.message);
+    if (err.name === 'AbortError') {
+      console.log("User canceled folder selection");
+    } else {
+      console.error(err);
+      alert("Failed to connect folder: " + err.message);
+    }
   }
 }
 
-
-async function saveJSON(){
- if(!jsonFileHandle){ alert("Connect project folder first."); return; }
- const writable=await jsonFileHandle.createWritable();
- await writable.write(JSON.stringify(epics,null,2));
- await writable.close();
- isDirty=false;
- alert("board.json saved.");
+async function saveJSON() {
+  if (!jsonFileHandle) {
+    alert("Connect project folder first.");
+    return;
+  }
+  try {
+    const writable = await jsonFileHandle.createWritable();
+    await writable.write(JSON.stringify(epics, null, 2));
+    await writable.close();
+    isDirty = false;
+    alert("✅ board.json saved!");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to save: " + err.message);
+  }
 }
 
 /* Update helpers */
@@ -292,5 +311,6 @@ function findTicket(id){
 
 </body>
 </html>
+
 
 
